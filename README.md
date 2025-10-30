@@ -1,6 +1,3 @@
-Here’s a detailed **README.md** for your *Health Connect / MediLink* project, incorporating the Go backend, ReactJS frontend, and SQL database tech stack while staying aligned with your slides:
-
----
 
 # 🏥 Health Connect (MediLink)
 
