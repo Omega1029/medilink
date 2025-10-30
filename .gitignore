@@ -1,0 +1,73 @@
+# =====================================
+# 🧱 GENERAL
+# =====================================
+.DS_Store
+.env
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.lock
+node_modules/
+dist/
+build/
+coverage/
+__pycache__/
+
+# =====================================
+# ⚙️ FRONTEND (React / Vite / CRA)
+# =====================================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.eslintcache
+
+# =====================================
+# 🧰 BACKEND (Go)
+# =====================================
+backend/bin/
+backend/tmp/
+backend/.env
+backend/*.log
+backend/*.out
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+*.mod
+*.sum
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+
+# =====================================
+# 🐳 DOCKER (optional)
+# =====================================
+/docker-data/
+/volumes/
+*.pid
+
+# =====================================
+# 🚀 DEPLOYMENT / SYSTEM
+# =====================================
+*.tar
+*.gz
+*.zip
+*.7z
+*.tgz
+*.bak
+Thumbs.db
