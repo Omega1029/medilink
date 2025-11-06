@@ -1,57 +1,109 @@
 import { useState } from "react";
-import "./PatientRegistration.css";
+import "./PhysicianRegistration.css";
 import api from "../api";
 
-interface PatientRegistrationProps {
+interface PhysicianRegistrationProps {
   onSuccess?: (userId?: number) => void;
   onBack?: () => void;
 }
 
-function PatientRegistration({ onSuccess, onBack }: PatientRegistrationProps) {
+const SPECIALTIES = [
+  "Allergy and Immunology",
+  "Anesthesiology",
+  "Cardiology",
+  "Cardiothoracic Surgery",
+  "Critical Care Medicine",
+  "Dermatology",
+  "Emergency Medicine",
+  "Endocrinology",
+  "Family Medicine",
+  "Gastroenterology",
+  "General Surgery",
+  "Geriatrics",
+  "Hematology",
+  "Infectious Disease",
+  "Internal Medicine",
+  "Medical Genetics",
+  "Nephrology",
+  "Neurology",
+  "Neurosurgery",
+  "Nuclear Medicine",
+  "Obstetrics and Gynecology",
+  "Oncology",
+  "Ophthalmology",
+  "Orthopedic Surgery",
+  "Orthopedics",
+  "Otolaryngology (ENT)",
+  "Pathology",
+  "Pediatrics",
+  "Physical Medicine and Rehabilitation",
+  "Plastic Surgery",
+  "Psychiatry",
+  "Pulmonology",
+  "Radiation Oncology",
+  "Radiology",
+  "Rheumatology",
+  "Sports Medicine",
+  "Thoracic Surgery",
+  "Urology",
+  "Vascular Surgery",
+];
+
+function PhysicianRegistration({ onSuccess, onBack }: PhysicianRegistrationProps) {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     name: "",
     address: "",
-    hasInsurance: false,
-    physicianId: "",
+    license: "",
+    officeLocation: "",
+    specialties: [] as string[],
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: value,
+    }));
+  };
+
+  const handleSpecialtyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, (option) => option.value);
+    setFormData((prev) => ({
+      ...prev,
+      specialties: selectedOptions,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    // Validate specialties
+    if (formData.specialties.length === 0) {
+      setError("Please select at least one specialty.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const payload: any = {
+      const payload = {
         username: formData.username.trim(),
         email: formData.email.trim(),
         password: formData.password,
         name: formData.name.trim(),
         address: formData.address.trim(),
-        has_insurance: formData.hasInsurance,
+        license: formData.license.trim(),
+        office_location: formData.officeLocation.trim(),
+        specialties: formData.specialties,
       };
 
-      // Add physician_id only if provided
-      if (formData.physicianId.trim()) {
-        const physicianId = parseInt(formData.physicianId.trim());
-        if (!isNaN(physicianId) && physicianId > 0) {
-          payload.physician_id = physicianId;
-        }
-      }
-
-      const response = await api.post("/auth/register/patient", payload);
+      const response = await api.post("/auth/register/physician", payload);
 
       if (response.data.success) {
         onSuccess?.(response.data.id);
@@ -73,7 +125,7 @@ function PatientRegistration({ onSuccess, onBack }: PatientRegistrationProps) {
     <div className="registration-container">
       <div className="registration-content">
         <h1 className="app-title">HealthConnect</h1>
-        <h2 className="registration-subtitle">Patient Registration</h2>
+        <h2 className="registration-subtitle">Physician Registration</h2>
 
         {error && <div className="error-message">{error}</div>}
 
@@ -131,7 +183,7 @@ function PatientRegistration({ onSuccess, onBack }: PatientRegistrationProps) {
               onChange={handleChange}
               required
               className="form-input"
-              placeholder="Enter your full name"
+              placeholder="Dr. Jane Smith"
             />
           </div>
 
@@ -144,37 +196,65 @@ function PatientRegistration({ onSuccess, onBack }: PatientRegistrationProps) {
               onChange={handleChange}
               required
               className="form-input form-textarea"
-              placeholder="123 Main St, City, State 12345"
+              placeholder="456 Medical Blvd, City, State 12345"
               rows={3}
             />
           </div>
 
-          <div className="form-group checkbox-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                name="hasInsurance"
-                checked={formData.hasInsurance}
-                onChange={handleChange}
-                className="checkbox-input"
-              />
-              <span>I have health insurance coverage</span>
-            </label>
+          <div className="form-group">
+            <label htmlFor="license">License Number *</label>
+            <input
+              type="text"
+              id="license"
+              name="license"
+              value={formData.license}
+              onChange={handleChange}
+              required
+              className="form-input"
+              placeholder="MD123456"
+            />
           </div>
 
           <div className="form-group">
-            <label htmlFor="physicianId">Physician ID (Optional)</label>
-            <input
-              type="number"
-              id="physicianId"
-              name="physicianId"
-              value={formData.physicianId}
+            <label htmlFor="officeLocation">Office Location *</label>
+            <textarea
+              id="officeLocation"
+              name="officeLocation"
+              value={formData.officeLocation}
               onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your physician ID if you have one"
-              min="1"
+              required
+              className="form-input form-textarea"
+              placeholder="789 Health Center, Suite 200"
+              rows={2}
             />
-            <small className="form-help">Leave blank if you don't have a physician yet</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="specialties">Specialties *</label>
+            <select
+              id="specialties"
+              name="specialties"
+              multiple
+              value={formData.specialties}
+              onChange={handleSpecialtyChange}
+              required
+              className="form-input form-select"
+              size={8}
+            >
+              {SPECIALTIES.map((specialty) => (
+                <option key={specialty} value={specialty}>
+                  {specialty}
+                </option>
+              ))}
+            </select>
+            <small className="form-help">
+              {formData.specialties.length === 0
+                ? "Hold Ctrl (Windows) or Cmd (Mac) to select multiple specialties"
+                : `${formData.specialties.length} specialty${formData.specialties.length > 1 ? "ies" : ""} selected`}
+            </small>
+            {formData.specialties.length === 0 && (
+              <small className="form-help error">Please select at least one specialty</small>
+            )}
           </div>
 
           <div className="form-actions">
@@ -213,5 +293,5 @@ function PatientRegistration({ onSuccess, onBack }: PatientRegistrationProps) {
   );
 }
 
-export default PatientRegistration;
+export default PhysicianRegistration;
 

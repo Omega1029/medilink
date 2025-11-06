@@ -174,27 +174,28 @@ type RegisterResponse struct {
 	Success bool   `json:"success"`
 	Token   string `json:"token,omitempty"`
 	Message string `json:"message,omitempty"`
-	ID      uint   `json:"id,omitempty"`
+	ID      string `json:"id,omitempty"`
 }
 
 type PatientRegisterRequest struct {
-	Username     string `json:"username" binding:"required"`
-	Email        string `json:"email" binding:"required,email"`
-	Password     string `json:"password" binding:"required,min=6"`
-	Name         string `json:"name" binding:"required"`
-	Address      string `json:"address" binding:"required"`
-	HasInsurance bool   `json:"has_insurance"`
-	PhysicianID  *uint  `json:"physician_id,omitempty"` // Optional physician ID
+	Username     string  `json:"username" binding:"required"`
+	Email        string  `json:"email" binding:"required,email"`
+	Password     string  `json:"password" binding:"required,min=6"`
+	Name         string  `json:"name" binding:"required"`
+	Address      string  `json:"address" binding:"required"`
+	HasInsurance bool    `json:"has_insurance"`
+	PhysicianID  *string `json:"physician_id,omitempty"` // Optional physician ID (UUID)
 }
 
 type PhysicianRegisterRequest struct {
-	Username       string `json:"username" binding:"required"`
-	Email          string `json:"email" binding:"required,email"`
-	Password       string `json:"password" binding:"required,min=6"`
-	Name           string `json:"name" binding:"required"`
-	Address        string `json:"address" binding:"required"`
-	License        string `json:"license" binding:"required"`
-	OfficeLocation string `json:"office_location" binding:"required"`
+	Username       string   `json:"username" binding:"required"`
+	Email          string   `json:"email" binding:"required,email"`
+	Password       string   `json:"password" binding:"required,min=6"`
+	Name           string   `json:"name" binding:"required"`
+	Address        string   `json:"address" binding:"required"`
+	License        string   `json:"license" binding:"required"`
+	OfficeLocation string   `json:"office_location" binding:"required"`
+	Specialties    []string `json:"specialties" binding:"required,min=1"` // Array of specialty names
 }
 
 // PatientRegister handles patient registration
@@ -337,6 +338,28 @@ func (h *AuthHandler) PhysicianRegister(c *gin.Context) {
 		return
 	}
 
+	// Find or create specialties
+	var specialties []models.Specialty
+	for _, specialtyName := range req.Specialties {
+		var specialty models.Specialty
+		// Try to find existing specialty
+		result := h.DB.Where("name = ?", specialtyName).First(&specialty)
+		if result.Error != nil {
+			// Create new specialty if it doesn't exist
+			specialty = models.Specialty{
+				Name: specialtyName,
+			}
+			if err := h.DB.Create(&specialty).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, RegisterResponse{
+					Success: false,
+					Message: "Failed to create specialty: " + specialtyName,
+				})
+				return
+			}
+		}
+		specialties = append(specialties, specialty)
+	}
+
 	// Create physician
 	physician := models.Physician{
 		Username:       req.Username,
@@ -347,6 +370,7 @@ func (h *AuthHandler) PhysicianRegister(c *gin.Context) {
 		License:        req.License,
 		OfficeLocation: req.OfficeLocation,
 		Verified:       true, // Auto-verified
+		Specialties:    specialties,
 	}
 
 	// Save physician

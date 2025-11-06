@@ -1,9 +1,44 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./PatientDashboard.css";
 import DateRangePicker from "./DateRangePicker";
 import DoctorSearch from "./DoctorSearch";
+import { patientAPI } from "../api";
+import api from "../api";
 
-function PatientDashboard() {
+interface PatientDashboardProps {
+  userId?: number | null;
+  userEmail?: string;
+}
+
+interface Medication {
+  id: number;
+  name: string;
+  dosage: string;
+  frequency?: string;
+  instructions?: string;
+}
+
+interface Message {
+  id: number;
+  subject?: string;
+  content?: string;
+  physician?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  sent_at?: string;
+  read?: boolean;
+  sender_type?: string;
+}
+
+interface Physician {
+  id: number;
+  name: string;
+  email: string;
+}
+
+function PatientDashboard({ userId, userEmail }: PatientDashboardProps) {
   const [activeTab, setActiveTab] = useState<"home" | "search" | "history" | "wallet">("home");
   const [selectedDay, setSelectedDay] = useState("Mon");
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -13,6 +48,74 @@ function PatientDashboard() {
   const [rangeEnd, setRangeEnd] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const chartRef = useRef<SVGSVGElement>(null);
+
+  // Data states
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [physicians, setPhysicians] = useState<Physician[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [patientId, setPatientId] = useState<number | null>(userId || null);
+
+  // Fetch patient ID from email if not provided
+  useEffect(() => {
+    const fetchPatientId = async () => {
+      if (!patientId && userEmail) {
+        try {
+          // We'll need to get patient ID from email
+          // For now, we'll use a default or try to get it from the backend
+          // This is a placeholder - you may need to add an endpoint to get user by email
+          setPatientId(1); // Fallback to ID 1 for demo
+        } catch (err) {
+          console.error("Failed to fetch patient ID:", err);
+          setPatientId(1); // Fallback
+        }
+      }
+    };
+
+    fetchPatientId();
+  }, [patientId, userEmail]);
+
+  // Fetch patient data
+  useEffect(() => {
+    const fetchPatientData = async () => {
+      if (!patientId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      try {
+        // Fetch medications, messages, and physicians in parallel
+        const [medicationsRes, messagesRes, physiciansRes] = await Promise.all([
+          patientAPI.getMedications(patientId).catch(() => ({ success: false, medications: [] })),
+          patientAPI.getMessages(patientId).catch(() => ({ success: false, messages: [] })),
+          patientAPI.getPhysicians(patientId).catch(() => ({ success: false, physicians: [] })),
+        ]);
+
+        if (medicationsRes.success) {
+          setMedications(medicationsRes.medications || []);
+        }
+
+        if (messagesRes.success) {
+          setMessages(messagesRes.messages || []);
+        }
+
+        if (physiciansRes.success) {
+          setPhysicians(physiciansRes.physicians || []);
+        }
+      } catch (err: any) {
+        setError("Failed to load patient data. Please try again.");
+        console.error("Error fetching patient data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatientData();
+  }, [patientId]);
 
   const dates = [
     { x: 30, label: "Nov 23" },
@@ -147,21 +250,40 @@ function PatientDashboard() {
       {/* Main Content */}
       <main className="dashboard-content">
         {/* Medication Cards Row */}
-        <div className="medication-row">
-          {/* Medication Reminder Card */}
-          <div className="card medication-card">
-            <h3 className="card-title">Medication Reminder</h3>
-            <h4 className="medication-name">Metformin</h4>
-            <p className="medication-dosage">500 mg, qty 1</p>
-          </div>
+        {loading ? (
+          <div className="loading-message">Loading medications...</div>
+        ) : error ? (
+          <div className="error-message">{error}</div>
+        ) : (
+          <div className="medication-row">
+            {/* Medication Reminder Card */}
+            {medications.length > 0 ? (
+              <div className="card medication-card">
+                <h3 className="card-title">Medication Reminder</h3>
+                <h4 className="medication-name">{medications[0].name}</h4>
+                <p className="medication-dosage">
+                  {medications[0].dosage}
+                  {medications[0].frequency && `, ${medications[0].frequency}`}
+                </p>
+              </div>
+            ) : (
+              <div className="card medication-card">
+                <h3 className="card-title">Medication Reminder</h3>
+                <h4 className="medication-name">No medications</h4>
+                <p className="medication-dosage">No medications found</p>
+              </div>
+            )}
 
-          {/* Refill Alert Card */}
-          <div className="card refill-card">
-            <h3 className="card-title">Refill Alert</h3>
-            <p className="refill-action">Click Here to Refill</p>
-            <p className="refill-status">10 out of 60 pills rem</p>
+            {/* Refill Alert Card */}
+            <div className="card refill-card">
+              <h3 className="card-title">Refill Alert</h3>
+              <p className="refill-action">Click Here to Refill</p>
+              <p className="refill-status">
+                {medications.length > 0 ? "Check medication status" : "No medications to refill"}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Lab Results Card */}
         <div className="card lab-results-card">
@@ -264,35 +386,60 @@ function PatientDashboard() {
         <div className="card messaging-card">
           <h3 className="card-title">Secure Messaging</h3>
           
-          {/* Message Entry 1 */}
-          <div className="message-entry">
-            <div className="message-avatar">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="20" fill="#e0e0e0"/>
-                <circle cx="20" cy="15" r="6" fill="#666"/>
-                <path d="M10 32c0-5 4.5-9 10-9s10 4 10 9" fill="#666"/>
-              </svg>
-            </div>
-            <div className="message-info">
-              <h4 className="message-name">Dr. Jon Snow</h4>
-              <p className="message-status">3 New Messages!</p>
-            </div>
-          </div>
+          {loading ? (
+            <div className="loading-message">Loading messages...</div>
+          ) : messages.length > 0 ? (
+            <>
+              {/* Group messages by physician */}
+              {physicians.map((physician) => {
+                const physicianMessages = messages.filter(
+                  (msg) => msg.physician?.id === physician.id
+                );
+                const unreadCount = physicianMessages.filter((msg) => !msg.read).length;
+                
+                if (physicianMessages.length === 0) return null;
 
-          {/* Message Entry 2 */}
-          <div className="message-entry">
-            <div className="message-avatar ai-avatar">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="20" fill="#2196f3"/>
-                <path d="M20 12 L25 20 L20 28 L15 20 Z" fill="#ffffff" opacity="0.9"/>
-                <circle cx="20" cy="20" r="4" fill="#ffffff" opacity="0.7"/>
-              </svg>
+                return (
+                  <div key={physician.id} className="message-entry">
+                    <div className="message-avatar">
+                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="20" fill="#e0e0e0"/>
+                        <circle cx="20" cy="15" r="6" fill="#666"/>
+                        <path d="M10 32c0-5 4.5-9 10-9s10 4 10 9" fill="#666"/>
+                      </svg>
+                    </div>
+                    <div className="message-info">
+                      <h4 className="message-name">{physician.name}</h4>
+                      <p className="message-status">
+                        {unreadCount > 0
+                          ? `${unreadCount} New Message${unreadCount > 1 ? "s" : ""}!`
+                          : `${physicianMessages.length} Message${physicianMessages.length > 1 ? "s" : ""}`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* AI Summary entry */}
+              <div className="message-entry">
+                <div className="message-avatar ai-avatar">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <circle cx="20" cy="20" r="20" fill="#2196f3"/>
+                    <path d="M20 12 L25 20 L20 28 L15 20 Z" fill="#ffffff" opacity="0.9"/>
+                    <circle cx="20" cy="20" r="4" fill="#ffffff" opacity="0.7"/>
+                  </svg>
+                </div>
+                <div className="message-info">
+                  <h4 className="message-name">AI Summary</h4>
+                  <p className="message-status">Available</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="no-messages">
+              <p>No messages yet</p>
             </div>
-            <div className="message-info">
-              <h4 className="message-name">AI Summary</h4>
-              <p className="message-status">1 New Message!</p>
-            </div>
-          </div>
+          )}
         </div>
       </main>
 

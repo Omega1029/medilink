@@ -60,3 +60,21 @@ func (h *PhysicianHandler) GetPhysicianMessages(c *gin.Context) {
 	})
 }
 
+// GetSpecialties gets all available medical specialties
+func (h *PhysicianHandler) GetSpecialties(c *gin.Context) {
+	var specialties []models.Specialty
+	result := h.DB.Order("name ASC").Find(&specialties)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch specialties",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"specialties": specialties,
+	})
+}
+

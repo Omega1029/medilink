@@ -1,4 +1,4 @@
-.sign-in-container {
+.registration-container {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -10,9 +10,9 @@
   box-sizing: border-box;
 }
 
-.sign-in-content {
+.registration-content {
   width: 100%;
-  max-width: min(400px, 90vw);
+  max-width: min(500px, 90vw);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -29,7 +29,7 @@
   line-height: 1.2;
 }
 
-.sign-in-subtitle {
+.registration-subtitle {
   font-size: clamp(1.25rem, 5vw, 1.5rem);
   font-weight: 700;
   color: #000000;
@@ -39,38 +39,28 @@
   line-height: 1.2;
 }
 
-.sign-in-section {
+.registration-form {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: clamp(0.75rem, 2vw, 1rem);
+  gap: clamp(1rem, 3vw, 1.25rem);
 }
 
-.section-heading {
-  font-size: clamp(1rem, 3.5vw, 1.125rem);
-  font-weight: 700;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem);
+}
+
+.form-group label {
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+  font-weight: 600;
   color: #000000;
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.3;
 }
 
-.section-instruction {
-  font-size: clamp(0.875rem, 2.5vw, 1rem);
-  font-weight: 400;
-  color: #666666;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.4;
-}
-
-.sign-in-section form {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.875rem, 3vw, 1rem);
-}
-
-.email-input {
+.form-input {
   width: 100%;
   padding: clamp(0.75rem, 2.5vw, 0.875rem) clamp(0.875rem, 3vw, 1rem);
   font-size: clamp(1rem, 3vw, 1rem);
@@ -83,62 +73,86 @@
   transition: border-color 0.2s;
 }
 
-.email-input::placeholder {
+.form-input::placeholder {
   color: #999999;
 }
 
-.email-input:focus {
+.form-input:focus {
   outline: none;
   border-color: #000000;
 }
 
-.continue-button {
-  width: 100%;
+.form-textarea {
+  resize: vertical;
+  min-height: clamp(4rem, 10vh, 5rem);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.form-actions {
+  display: flex;
+  gap: clamp(0.75rem, 2.5vw, 1rem);
+  margin-top: clamp(0.5rem, 2vw, 0.75rem);
+}
+
+.back-button,
+.submit-button {
+  flex: 1;
   padding: clamp(0.75rem, 2.5vw, 0.875rem) clamp(1rem, 4vw, 1.5rem);
   font-size: clamp(1rem, 3vw, 1rem);
   font-weight: 700;
-  color: #ffffff;
-  background-color: #000000;
   border: none;
   border-radius: clamp(0.375rem, 1.5vw, 0.5rem);
   cursor: pointer;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: background-color 0.2s, opacity 0.2s;
-  min-height: 44px; /* Minimum touch target size */
+  transition: all 0.2s;
+  min-height: 44px;
 }
 
-.continue-button:hover {
-  background-color: #333333;
+.back-button {
+  background-color: #f5f5f5;
+  color: #000000;
+  border: 1px solid #e0e0e0;
 }
 
-.continue-button:active {
+.back-button:hover:not(:disabled) {
+  background-color: #e0e0e0;
+  border-color: #000000;
+}
+
+.back-button:active:not(:disabled) {
   opacity: 0.8;
 }
 
-.continue-button:disabled {
-  background-color: #cccccc;
+.submit-button {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #333333;
+}
+
+.submit-button:active:not(:disabled) {
+  opacity: 0.8;
+}
+
+.back-button:disabled,
+.submit-button:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.separator {
+.error-message {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: clamp(0.5rem, 2vw, 0.75rem);
-  margin: clamp(0.375rem, 2vw, 0.5rem) 0;
-}
-
-.separator-line {
-  flex: 1;
-  height: 1px;
-  background-color: #e0e0e0;
-}
-
-.separator-text {
-  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
+  padding: clamp(0.75rem, 2.5vw, 0.875rem) clamp(0.875rem, 3vw, 1rem);
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
   font-weight: 400;
-  color: #666666;
+  color: #ffffff;
+  background-color: #d32f2f;
+  border-radius: clamp(0.375rem, 1.5vw, 0.5rem);
+  text-align: center;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.4;
 }
 
 .legal-text {
@@ -165,56 +179,53 @@
   text-decoration: underline;
 }
 
-.error-message {
-  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
-  font-weight: 400;
-  color: #d32f2f;
-  margin: clamp(-0.375rem, -1vw, -0.5rem) 0 0 0;
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/* Specialties Dropdown */
+.form-select {
+  min-height: clamp(8rem, 20vh, 10rem);
+  padding: clamp(0.5rem, 1.5vw, 0.625rem);
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
+  line-height: 1.5;
+  cursor: pointer;
 }
 
-.register-link {
-  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
+.form-select option {
+  padding: clamp(0.5rem, 1.5vw, 0.625rem);
+  cursor: pointer;
+}
+
+.form-select option:checked {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.form-help {
+  font-size: clamp(0.75rem, 2vw, 0.8125rem);
   font-weight: 400;
   color: #666666;
-  text-align: center;
-  margin: clamp(0.5rem, 2vw, 0.75rem) 0 0 0;
+  margin-top: clamp(-0.375rem, -1vw, -0.25rem);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.register-button-link {
-  background: none;
-  border: none;
-  padding: 0;
-  color: #000000;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  font-family: inherit;
-  font-size: inherit;
-  transition: color 0.2s;
+.form-help.error {
+  color: #d32f2f;
+  margin-top: clamp(0.25rem, 1vw, 0.375rem);
 }
 
-.register-button-link:hover {
-  color: #333333;
-}
-
-.register-button-link:active {
-  opacity: 0.8;
-}
-
-/* Tablet and larger screens */
-@media (min-width: 768px) {
-  .sign-in-content {
-    max-width: min(450px, 50vw);
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .form-actions {
+    flex-direction: column;
   }
-}
 
-/* Large desktop screens */
-@media (min-width: 1024px) {
-  .sign-in-content {
-    max-width: min(500px, 40vw);
+  .back-button,
+  .submit-button {
+    width: 100%;
   }
-}
+
 

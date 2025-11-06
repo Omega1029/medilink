@@ -35,13 +35,35 @@ func initDB() *gorm.DB {
 		&models.Physician{},
 		&models.Medication{},
 		&models.Message{},
+		&models.Specialty{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
+	// Seed specialties if they don't exist
+	seedSpecialties(db)
+
 	log.Printf("SQLite database connected successfully: %s", dbPath)
 	return db
+}
+
+// seedSpecialties seeds the database with medical specialties
+func seedSpecialties(db *gorm.DB) {
+	for _, specialtyName := range models.MedicalSpecialties {
+		var specialty models.Specialty
+		result := db.Where("name = ?", specialtyName).First(&specialty)
+		if result.Error != nil {
+			// Specialty doesn't exist, create it
+			specialty = models.Specialty{
+				Name: specialtyName,
+			}
+			if err := db.Create(&specialty).Error; err != nil {
+				log.Printf("Failed to seed specialty: %s", specialtyName)
+			}
+		}
+	}
+	log.Println("Medical specialties seeded successfully")
 }
 
 func main() {
@@ -99,6 +121,7 @@ func main() {
 	{
 		physicians.GET("/:id/patients", physicianHandler.GetPhysicianPatients)
 		physicians.GET("/:id/messages", physicianHandler.GetPhysicianMessages)
+		physicians.GET("/specialties", physicianHandler.GetSpecialties)
 	}
 
 	log.Println("Server starting on :8080")

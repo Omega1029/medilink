@@ -3,11 +3,13 @@ import "./SignIn.css";
 import api from "../api";
 
 interface SignInProps {
-  onPatientSignIn?: (email: string) => void;
-  onPhysicianSignIn?: (email: string) => void;
+  onPatientSignIn?: (email: string, userId?: number) => void;
+  onPhysicianSignIn?: (email: string, userId?: number) => void;
+  onPatientRegister?: () => void;
+  onPhysicianRegister?: () => void;
 }
 
-function SignIn({ onPatientSignIn, onPhysicianSignIn }: SignInProps) {
+function SignIn({ onPatientSignIn, onPhysicianSignIn, onPatientRegister, onPhysicianRegister }: SignInProps) {
   const [patientEmail, setPatientEmail] = useState("");
   const [patientPassword, setPatientPassword] = useState("");
   const [physicianEmail, setPhysicianEmail] = useState("");
@@ -34,7 +36,15 @@ function SignIn({ onPatientSignIn, onPhysicianSignIn }: SignInProps) {
         });
         
         if (response.data.success) {
-          onPatientSignIn?.(patientEmail);
+          // Try to get user ID from token or make a separate call
+          // For now, we'll need to fetch the patient by email to get ID
+          try {
+            // We'll need to get the patient ID - for now pass undefined
+            // The dashboard will need to handle this
+            onPatientSignIn?.(patientEmail, response.data.id);
+          } catch {
+            onPatientSignIn?.(patientEmail);
+          }
         } else {
           setPatientError("Invalid email or password");
         }
@@ -68,7 +78,15 @@ function SignIn({ onPatientSignIn, onPhysicianSignIn }: SignInProps) {
         });
         
         if (response.data.success) {
-          onPhysicianSignIn?.(physicianEmail);
+          // Try to get user ID from token or make a separate call
+          // For now, we'll need to fetch the physician by email to get ID
+          try {
+            // We'll need to get the physician ID - for now pass undefined
+            // The dashboard will need to handle this
+            onPhysicianSignIn?.(physicianEmail, response.data.id);
+          } catch {
+            onPhysicianSignIn?.(physicianEmail);
+          }
         } else {
           setPhysicianError("Invalid email or password");
         }
@@ -123,6 +141,16 @@ function SignIn({ onPatientSignIn, onPhysicianSignIn }: SignInProps) {
               {patientLoading ? "Signing in..." : "Continue"}
             </button>
           </form>
+          <p className="register-link">
+            Don't have an account?{" "}
+            <button
+              type="button"
+              className="register-button-link"
+              onClick={onPatientRegister}
+            >
+              Register as Patient
+            </button>
+          </p>
         </div>
 
         {/* Separator */}
@@ -164,6 +192,16 @@ function SignIn({ onPatientSignIn, onPhysicianSignIn }: SignInProps) {
               {physicianLoading ? "Signing in..." : "Continue"}
             </button>
           </form>
+          <p className="register-link">
+            Don't have an account?{" "}
+            <button
+              type="button"
+              className="register-button-link"
+              onClick={onPhysicianRegister}
+            >
+              Register as Physician
+            </button>
+          </p>
         </div>
 
         {/* Legal Text */}

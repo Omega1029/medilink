@@ -1,9 +1,39 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./PhysicianDashboard.css";
 import DateRangePicker from "./DateRangePicker";
 import DoctorSearch from "./DoctorSearch";
+import { physicianAPI } from "../api";
+import api from "../api";
 
-function PhysicianDashboard() {
+interface PhysicianDashboardProps {
+  userId?: number | null;
+  userEmail?: string;
+}
+
+interface Patient {
+  id: number;
+  name: string;
+  email: string;
+  address?: string;
+  has_insurance?: boolean;
+  verified?: boolean;
+}
+
+interface Message {
+  id: number;
+  subject?: string;
+  content?: string;
+  patient?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  sent_at?: string;
+  read?: boolean;
+  sender_type?: string;
+}
+
+function PhysicianDashboard({ userId, userEmail }: PhysicianDashboardProps) {
   const [activeTab, setActiveTab] = useState<"home" | "search" | "history" | "wallet">("home");
   const [selectedDay, setSelectedDay] = useState("Mon");
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -13,6 +43,68 @@ function PhysicianDashboard() {
   const [rangeEnd, setRangeEnd] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const chartRef = useRef<SVGSVGElement>(null);
+
+  // Data states
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [physicianId, setPhysicianId] = useState<number | null>(userId || null);
+
+  // Fetch physician ID from email if not provided
+  useEffect(() => {
+    const fetchPhysicianId = async () => {
+      if (!physicianId && userEmail) {
+        try {
+          // We'll need to get physician ID from email
+          // For now, we'll use a default or try to get it from the backend
+          // This is a placeholder - you may need to add an endpoint to get user by email
+          setPhysicianId(1); // Fallback to ID 1 for demo
+        } catch (err) {
+          console.error("Failed to fetch physician ID:", err);
+          setPhysicianId(1); // Fallback
+        }
+      }
+    };
+
+    fetchPhysicianId();
+  }, [physicianId, userEmail]);
+
+  // Fetch physician data
+  useEffect(() => {
+    const fetchPhysicianData = async () => {
+      if (!physicianId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      try {
+        // Fetch patients and messages in parallel
+        const [patientsRes, messagesRes] = await Promise.all([
+          physicianAPI.getPatients(physicianId).catch(() => ({ success: false, patients: [] })),
+          physicianAPI.getMessages(physicianId).catch(() => ({ success: false, messages: [] })),
+        ]);
+
+        if (patientsRes.success) {
+          setPatients(patientsRes.patients || []);
+        }
+
+        if (messagesRes.success) {
+          setMessages(messagesRes.messages || []);
+        }
+      } catch (err: any) {
+        setError("Failed to load physician data. Please try again.");
+        console.error("Error fetching physician data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPhysicianData();
+  }, [physicianId]);
 
   const dates = [
     { x: 30, label: "Nov 23" },
@@ -147,21 +239,39 @@ function PhysicianDashboard() {
       {/* Main Content */}
       <main className="dashboard-content">
         {/* Patient Alert Cards Row */}
-        <div className="alert-row">
-          {/* Patient Alert Card */}
-          <div className="card patient-alert-card">
-            <h3 className="card-title">Patient Alert</h3>
-            <p className="alert-description">Significant Symptom Escalation</p>
-            <p className="alert-action">Click to see patient details</p>
-          </div>
+        {loading ? (
+          <div className="loading-message">Loading patient data...</div>
+        ) : error ? (
+          <div className="error-message">{error}</div>
+        ) : (
+          <div className="alert-row">
+            {/* Patient Alert Card */}
+            {patients.length > 0 ? (
+              <div className="card patient-alert-card">
+                <h3 className="card-title">Patient Alert</h3>
+                <p className="alert-description">
+                  {patients.length} Patient{patients.length > 1 ? "s" : ""} Assigned
+                </p>
+                <p className="alert-action">Click to see patient details</p>
+              </div>
+            ) : (
+              <div className="card patient-alert-card">
+                <h3 className="card-title">Patient Alert</h3>
+                <p className="alert-description">No patients assigned</p>
+                <p className="alert-action">No patient alerts</p>
+              </div>
+            )}
 
-          {/* Patient Refill Alert Card */}
-          <div className="card patient-refill-card">
-            <h3 className="card-title">Patient Refill Alert</h3>
-            <p className="refill-action">Click Here to Prod</p>
-            <p className="refill-status">10 out of 60 pills rem</p>
+            {/* Patient Refill Alert Card */}
+            <div className="card patient-refill-card">
+              <h3 className="card-title">Patient Refill Alert</h3>
+              <p className="refill-action">Click Here to Prod</p>
+              <p className="refill-status">
+                {patients.length > 0 ? `${patients.length} Patient${patients.length > 1 ? "s" : ""} to review` : "No patients"}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Review Patient Lab Results Card */}
         <div className="card lab-results-card">
@@ -264,39 +374,47 @@ function PhysicianDashboard() {
         <div className="card messaging-card">
           <h3 className="card-title">Secure Messaging</h3>
           
-          {/* Message Entry 1 - Dr. Jon Snow */}
-          <div className="message-entry">
-            <div className="message-avatar">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="20" fill="#e0e0e0"/>
-                <circle cx="20" cy="15" r="6" fill="#666"/>
-                <path d="M10 32c0-5 4.5-9 10-9s10 4 10 9" fill="#666"/>
-                {/* Hat representation */}
-                <rect x="12" y="8" width="16" height="4" rx="2" fill="#666"/>
-              </svg>
-            </div>
-            <div className="message-info">
-              <h4 className="message-name">Dr. Jon Snow</h4>
-              <p className="message-status">2 New Messages!</p>
-            </div>
-          </div>
+          {loading ? (
+            <div className="loading-message">Loading messages...</div>
+          ) : messages.length > 0 ? (
+            <>
+              {/* Group messages by patient */}
+              {patients.map((patient) => {
+                const patientMessages = messages.filter(
+                  (msg) => msg.patient?.id === patient.id
+                );
+                const unreadCount = patientMessages.filter((msg) => !msg.read).length;
+                
+                if (patientMessages.length === 0) return null;
 
-          {/* Message Entry 2 - Sam Doe -Patient */}
-          <div className="message-entry">
-            <div className="message-avatar patient-avatar">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="20" fill="#e0e0e0"/>
-                <circle cx="20" cy="15" r="6" fill="#666"/>
-                <path d="M10 32c0-5 4.5-9 10-9s10 4 10 9" fill="#666"/>
-                {/* Red beanie representation */}
-                <ellipse cx="20" cy="10" rx="8" ry="6" fill="#d32f2f"/>
-              </svg>
+                return (
+                  <div key={patient.id} className="message-entry">
+                    <div className="message-avatar patient-avatar">
+                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="20" fill="#e0e0e0"/>
+                        <circle cx="20" cy="15" r="6" fill="#666"/>
+                        <path d="M10 32c0-5 4.5-9 10-9s10 4 10 9" fill="#666"/>
+                        {/* Red beanie representation */}
+                        <ellipse cx="20" cy="10" rx="8" ry="6" fill="#d32f2f"/>
+                      </svg>
+                    </div>
+                    <div className="message-info">
+                      <h4 className="message-name">{patient.name} - Patient</h4>
+                      <p className="message-status">
+                        {unreadCount > 0
+                          ? `${unreadCount} New Message${unreadCount > 1 ? "s" : ""}!`
+                          : `${patientMessages.length} Message${patientMessages.length > 1 ? "s" : ""}`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <div className="no-messages">
+              <p>No messages yet</p>
             </div>
-            <div className="message-info">
-              <h4 className="message-name">Sam Doe -Patient</h4>
-              <p className="message-status">1 New Message!</p>
-            </div>
-          </div>
+          )}
         </div>
       </main>
 

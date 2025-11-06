@@ -65,7 +65,7 @@ func (h *PatientHandler) GetPatientPhysicians(c *gin.Context) {
 	patientID := c.Param("id")
 
 	var patient models.Patient
-	result := h.DB.Preload("Physicians").First(&patient, patientID)
+	result := h.DB.Preload("Physicians").Preload("Physicians.Specialties").First(&patient, patientID)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
