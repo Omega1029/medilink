@@ -13,8 +13,11 @@ This backend is lightweight, fast, and ready to integrate with any SQL database 
 
 - **Go (Golang)** — Backend language  
 - **Gin** — HTTP web framework  
-- **GORM** — ORM for SQL databases *(optional for future integration)*  
-- **godotenv** — Environment configuration  
+- **GORM** — ORM for database operations  
+- **SQLite** — File-based database (no configuration needed)  
+- **JWT** — JSON Web Tokens for authentication  
+- **bcrypt** — Password hashing  
+- **godotenv** — Environment configuration (optional)  
 - **CORS Middleware** — Enables frontend access  
 - **JSON-based APIs** — Secure data exchange  
 
@@ -25,14 +28,22 @@ This backend is lightweight, fast, and ready to integrate with any SQL database 
 ```bash
 backend/
 │
-├── main.go                 # Entry point
+├── main.go                 # Entry point and route setup
 ├── go.mod                  # Module definition
-├── .env                    # Environment variables
+├── go.sum                  # Dependency checksums
+├── .env                    # Environment variables (optional)
+├── healthconnect.db        # SQLite database (auto-generated)
 └── internal/
-    ├── models/             # Database models (future)
-    ├── routes/             # Route definitions
-    └── handlers/           # Controllers / business logic
-````
+    ├── models/             # Database models
+    │   ├── patient.go
+    │   ├── physician.go
+    │   ├── medication.go
+    │   └── message.go
+    └── handlers/           # Request handlers
+        ├── auth.go
+        ├── patient.go
+        └── physician.go
+```
 
 ---
 
@@ -56,61 +67,26 @@ go mod init github.com/yourusername/health-connect
 ```bash
 go get github.com/gin-gonic/gin
 go get github.com/joho/godotenv
-```
-
-*(If you plan to use a database later, also install GORM and your driver:)*
-
-```bash
 go get gorm.io/gorm
-go get gorm.io/driver/mysql
+go get gorm.io/driver/sqlite
+go get github.com/golang-jwt/jwt/v5
+go get golang.org/x/crypto/bcrypt
 ```
 
 ---
 
 ## 🧾 Environment Variables
 
-Create a `.env` file in the backend root (this file should **not** be committed):
+Environment variables are **optional** for SQLite. The database file (`healthconnect.db`) will be created automatically.
+
+Optional `.env` file:
 
 ```
-DB_USER=root
-DB_PASS=password
-DB_NAME=healthconnect
-DB_HOST=localhost
-DB_PORT=3306
-```
+# Optional: Custom database path (defaults to healthconnect.db)
+DB_PATH=healthconnect.db
 
----
-
-## 🧩 Example Code — `main.go`
-
-```go
-package main
-
-import (
-	"github.com/gin-gonic/gin"
-)
-
-func main() {
-	r := gin.Default()
-
-	// Enable CORS for frontend access
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
-		c.Next()
-	})
-
-	// Simple health check route
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Welcome to Health Connect API 🚀",
-		})
-	})
-
-	// Run server on port 8080
-	r.Run(":8080")
-}
+# Optional: JWT secret key (defaults to a development key)
+JWT_SECRET=your-secret-key-change-in-production
 ```
 
 ---
@@ -150,28 +126,363 @@ http://localhost:8080/
 
 ---
 
+## 📡 API Endpoints
+
+### Health Check
+
+**GET** `/`
+
+Returns a welcome message.
+
+**Response:**
+```json
+{
+  "message": "Welcome to Health Connect API 🚀"
+}
+```
+
+---
+
+### Authentication Endpoints
+
+#### Patient Login
+
+**POST** `/auth/patient`
+
+Authenticate a patient and receive a JWT token.
+
+**Request:**
+```json
+{
+  "email": "patient@example.com",
+  "password": "password123"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (Error):**
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+---
+
+#### Physician Login
+
+**POST** `/auth/physician`
+
+Authenticate a physician and receive a JWT token.
+
+**Request:**
+```json
+{
+  "email": "doctor@example.com",
+  "password": "password123"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (Error):**
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+---
+
+#### Patient Registration
+
+**POST** `/auth/register/patient`
+
+Register a new patient account. Account is automatically verified.
+
+**Request:**
+```json
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "password123",
+  "name": "John Doe",
+  "address": "123 Main St, City, State 12345",
+  "has_insurance": true,
+  "physician_id": 1
+}
+```
+
+**Note:** `physician_id` is optional. If provided, the patient will be linked to that physician.
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "id": 1,
+  "message": "Patient account created successfully"
+}
+```
+
+**Response (Error):**
+```json
+{
+  "success": false,
+  "message": "Email already registered"
+}
+```
+
+---
+
+#### Physician Registration
+
+**POST** `/auth/register/physician`
+
+Register a new physician account. Account is automatically verified.
+
+**Request:**
+```json
+{
+  "username": "drjane",
+  "email": "jane@example.com",
+  "password": "password123",
+  "name": "Dr. Jane Smith",
+  "address": "456 Medical Blvd, City, State 12345",
+  "license": "MD123456",
+  "office_location": "789 Health Center, Suite 200"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "id": 1,
+  "message": "Physician account created successfully"
+}
+```
+
+**Response (Error):**
+```json
+{
+  "success": false,
+  "message": "License number already registered"
+}
+```
+
+---
+
+### Patient Endpoints
+
+#### Get Patient Medications
+
+**GET** `/patients/:id/medications`
+
+Retrieve all medications for a specific patient.
+
+**Response:**
+```json
+{
+  "success": true,
+  "medications": [
+    {
+      "id": 1,
+      "patient_id": 1,
+      "name": "Aspirin",
+      "dosage": "81mg",
+      "frequency": "Once daily",
+      "instructions": "Take with food",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": null,
+      "prescribed_by": "Dr. Smith"
+    }
+  ]
+}
+```
+
+---
+
+#### Get Patient Messages
+
+**GET** `/patients/:id/messages`
+
+Retrieve all messages for a specific patient.
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages": [
+    {
+      "id": 1,
+      "patient_id": 1,
+      "physician_id": 1,
+      "subject": "Follow-up Appointment",
+      "content": "Please schedule a follow-up appointment...",
+      "sent_at": "2024-01-15T10:30:00Z",
+      "read": false,
+      "sender_type": "physician",
+      "physician": {
+        "id": 1,
+        "name": "Dr. Smith",
+        "email": "dr.smith@example.com"
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### Get Patient Physicians
+
+**GET** `/patients/:id/physicians`
+
+Retrieve all physicians associated with a specific patient.
+
+**Response:**
+```json
+{
+  "success": true,
+  "physicians": [
+    {
+      "id": 1,
+      "username": "drjane",
+      "email": "jane@example.com",
+      "name": "Dr. Jane Smith",
+      "address": "456 Medical Blvd",
+      "license": "MD123456",
+      "office_location": "789 Health Center, Suite 200",
+      "verified": true
+    }
+  ]
+}
+```
+
+---
+
+### Physician Endpoints
+
+#### Get Physician Patients
+
+**GET** `/physicians/:id/patients`
+
+Retrieve all patients associated with a specific physician.
+
+**Response:**
+```json
+{
+  "success": true,
+  "patients": [
+    {
+      "id": 1,
+      "username": "johndoe",
+      "email": "john@example.com",
+      "name": "John Doe",
+      "address": "123 Main St",
+      "has_insurance": true,
+      "verified": true
+    }
+  ]
+}
+```
+
+---
+
+#### Get Physician Messages
+
+**GET** `/physicians/:id/messages`
+
+Retrieve all messages for a specific physician.
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages": [
+    {
+      "id": 1,
+      "patient_id": 1,
+      "physician_id": 1,
+      "subject": "Question about medication",
+      "content": "I have a question about my prescription...",
+      "sent_at": "2024-01-15T14:20:00Z",
+      "read": false,
+      "sender_type": "patient",
+      "patient": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com"
+      }
+    }
+  ]
+}
+```
+
+---
+
 ## 🧱 Future Expansion
 
 | Feature                  | Description                                          |
 | ------------------------ | ---------------------------------------------------- |
-| **Authentication**       | JWT-based login and role-based access control        |
-| **Database Integration** | Use GORM with MySQL or PostgreSQL                    |
+| **Message Creation**     | POST endpoints for creating messages                 |
+| **Medication Management** | POST/PUT/DELETE endpoints for medications          |
+| **Patient-Physician Linking** | Endpoints to manage relationships                  |
 | **AI Integration**       | Connect to DeepMind or OpenAI APIs for summarization |
 | **Logging & Monitoring** | Add structured logging and performance metrics       |
 | **Docker Deployment**    | Containerize backend for scalability                 |
 
 ---
 
-## 🧹 .gitignore Example
+## 🧹 .gitignore
 
 ```
+# Database files
+*.db
+*.db-shm
+*.db-wal
+healthconnect.db
+
+# Environment variables
 .env
-*.log
+
+# Build artifacts
 *.out
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
 .idea/
 .vscode/
-bin/
-tmp/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
 ```
 
 ---

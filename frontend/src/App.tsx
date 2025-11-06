@@ -1,18 +1,38 @@
-import { useEffect, useState } from "react";
-import api from "./api";
+import { useState } from "react";
+import SignIn from "./components/SignIn";
+import PatientDashboard from "./components/PatientDashboard";
+import PhysicianDashboard from "./components/PhysicianDashboard";
+import "./App.css";
 
 function App() {
-  const [message, setMessage] = useState("");
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [userType, setUserType] = useState<"patient" | "physician" | null>(null);
 
-  useEffect(() => {
-    api.get("/").then((res) => setMessage(res.data.message));
-  }, []);
+  const handlePatientSignIn = (email: string) => {
+    console.log("Patient sign in:", email);
+    setUserType("patient");
+    setIsSignedIn(true);
+  };
+
+  const handlePhysicianSignIn = (email: string) => {
+    console.log("Physician sign in:", email);
+    setUserType("physician");
+    setIsSignedIn(true);
+  };
+
+  if (isSignedIn && userType === "patient") {
+    return <PatientDashboard />;
+  }
+
+  if (isSignedIn && userType === "physician") {
+    return <PhysicianDashboard />;
+  }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>🩺 Health Connect</h1>
-      <p>{message}</p>
-    </div>
+    <SignIn
+      onPatientSignIn={handlePatientSignIn}
+      onPhysicianSignIn={handlePhysicianSignIn}
+    />
   );
 }
 

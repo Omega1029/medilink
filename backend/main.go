@@ -6,42 +6,101 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/yourusername/health-connect/internal/handlers"
+	"github.com/yourusername/health-connect/internal/models"
 )
 
-
 func initDB() *gorm.DB {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// Try to load .env file (optional for SQLite)
+	_ = godotenv.Load()
+
+	// Use SQLite database file
+	// Can be overridden with DB_PATH environment variable
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "healthconnect.db"
 	}
 
-	dsn := os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASS") +
-		"@tcp(" + os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + ")/" +
-		os.Getenv("DB_NAME") + "?charset=utf8mb4&parseTime=True&loc=Local"
-
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
+
+	// Auto-migrate models
+	err = db.AutoMigrate(
+		&models.Patient{},
+		&models.Physician{},
+		&models.Medication{},
+		&models.Message{},
+	)
+	if err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+
+	log.Printf("SQLite database connected successfully: %s", dbPath)
 	return db
 }
 
 func main() {
-	r := gin.Default()
-	r.Use(func(c *gin.Context) {
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
-	c.Next()
-})
+	// Initialize database
+	db := initDB()
 
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(db)
+	patientHandler := handlers.NewPatientHandler(db)
+	physicianHandler := handlers.NewPhysicianHandler(db)
+
+	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// Health check route
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Welcome to Health Connect API 🚀",
 		})
 	})
 
+	// Auth routes
+	auth := r.Group("/auth")
+	{
+		auth.GET("", authHandler.Auth)
+		auth.POST("/patient", authHandler.PatientLogin)
+		auth.POST("/physician", authHandler.PhysicianLogin)
+		auth.POST("/register/patient", authHandler.PatientRegister)
+		auth.POST("/register/physician", authHandler.PhysicianRegister)
+	}
+
+	// Patient routes
+	patients := r.Group("/patients")
+	{
+		patients.GET("/:id/medications", patientHandler.GetPatientMedications)
+		patients.GET("/:id/messages", patientHandler.GetPatientMessages)
+		patients.GET("/:id/physicians", patientHandler.GetPatientPhysicians)
+	}
+
+	// Physician routes
+	physicians := r.Group("/physicians")
+	{
+		physicians.GET("/:id/patients", physicianHandler.GetPhysicianPatients)
+		physicians.GET("/:id/messages", physicianHandler.GetPhysicianMessages)
+	}
+
+	log.Println("Server starting on :8080")
 	r.Run(":8080")
 }
